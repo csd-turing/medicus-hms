@@ -9,4 +9,8 @@ public ResponseEntity<PatientDto> getById(@PathVariable Long id) {
     Patient patient = service.getPatientById(id);
     return ResponseEntity.ok(PatientMapper.toDto(patient));
 }
+@GetMapping("/search")
+public ResponseEntity<List<PatientDto>> searchPatients(@RequestParam String query) {
+    return ResponseEntity.ok(service.searchPatients(query));
+}
 }
