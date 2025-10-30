@@ -1,55 +1,66 @@
 package com.csd.medicus.service.impl;
 
-import com.csd.medicus.dto.PatientDto;
 import com.csd.medicus.model.Patient;
 import com.csd.medicus.repository.PatientRepository;
 import com.csd.medicus.service.PatientService;
-import com.csd.medicus.mapper.PatientMapper;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import java.util.List;
+import java.util.Optional;
 
 @Service
+@Transactional
 public class PatientServiceImpl implements PatientService {
 
-    private final PatientRepository patientRepository;
+    private final PatientRepository repo;
 
-    public PatientServiceImpl(PatientRepository patientRepository) {
-        this.patientRepository = patientRepository;
+    public PatientServiceImpl(PatientRepository repo) {
+        this.repo = repo;
     }
 
     @Override
-    public PatientDto createPatient(PatientDto patientDto) {
-        Patient patient = PatientMapper.toEntity(patientDto);
-        return PatientMapper.toDto(patientRepository.save(patient));
+    public Patient savePatient(Patient p) {
+        // basic validation aligned with Patient model
+        if (p == null) throw new IllegalArgumentException("Patient must not be null");
+        if (p.getFirstName() == null || p.getFirstName().trim().length() < 2) {
+            throw new IllegalArgumentException("First name required and must be at least 2 characters");
+        }
+        if (p.getLastName() == null || p.getLastName().trim().length() < 1) {
+            throw new IllegalArgumentException("Last name required");
+        }
+        // normalize / trim
+        p.setFirstName(p.getFirstName().trim());
+        p.setLastName(p.getLastName().trim());
+        return repo.save(p);
     }
 
     @Override
-    public PatientDto getPatientById(Long id) {
-        return patientRepository.findById(id)
-                .map(PatientMapper::toDto)
-                .orElseThrow(() -> new RuntimeException("Patient not found"));
+    public List<Patient> getAllPatients() {
+        return repo.findAll();
     }
 
     @Override
-    public List<PatientDto> getAllPatients() {
-        return patientRepository.findAll()
-                .stream().map(PatientMapper::toDto).toList();
+    public Optional<Patient> getPatientById(Long id) {
+        return repo.findById(id);
     }
 
     @Override
-    public PatientDto updatePatient(Long id, PatientDto patientDto) {
-        Patient existing = patientRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Patient not found"));
-
-        existing.setFirstName(patientDto.getFirstName());
-        existing.setPhone(patientDto.getPhone());
-        existing.setEmail(patientDto.getEmail());
-
-        return PatientMapper.toDto(patientRepository.save(existing));
+    public Patient updatePatient(Long id, Patient p) {
+        Patient existing = repo.findById(id).orElseThrow(() -> new RuntimeException("Patient not found: " + id));
+        if (p.getFirstName() != null && p.getFirstName().trim().length() >= 2) {
+            existing.setFirstName(p.getFirstName().trim());
+        }
+        if (p.getLastName() != null && p.getLastName().trim().length() >= 1) {
+            existing.setLastName(p.getLastName().trim());
+        }
+        if (p.getEmail() != null) existing.setEmail(p.getEmail().trim());
+        if (p.getPhone() != null) existing.setPhone(p.getPhone().trim());
+        return repo.save(existing);
     }
 
     @Override
     public void deletePatient(Long id) {
-        patientRepository.deleteById(id);
+        repo.deleteById(id);
     }
 }
