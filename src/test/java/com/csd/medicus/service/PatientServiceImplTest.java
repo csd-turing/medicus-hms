@@ -8,9 +8,11 @@ import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import com.csd.medicus.dto.PatientDto;
 
 import java.util.Optional;
-
+import java.util.List;
+import java.time.LocalDateTime;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
@@ -69,6 +71,14 @@ void testUpdatePatient() {
 
 @Test
 void testSearchPatients() {
+Patient patient = new Patient(
+        1L,
+        "Ram Kumar",
+        "9876543210",
+        "ram@example.com",
+        "Delhi",
+        LocalDateTime.now()
+);
     when(repo.searchPatients("ram"))
             .thenReturn(List.of(patient));
 

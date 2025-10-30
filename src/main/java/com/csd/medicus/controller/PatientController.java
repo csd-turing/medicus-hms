@@ -1,5 +1,6 @@
 package com.csd.medicus.controller;
 import com.csd.medicus.dto.PatientDto; import com.csd.medicus.mapper.PatientMapper; import com.csd.medicus.model.Patient; import com.csd.medicus.service.PatientService; import com.csd.medicus.validator.PatientValidator; import org.springframework.http.ResponseEntity; import org.springframework.web.bind.annotation.*;
+import java.util.List;
 @RestController @RequestMapping("/api/v1/patients") public class PatientController {
     private final PatientService service;
     public PatientController(PatientService service){ this.service=service; }

@@ -1,6 +1,7 @@
 package com.csd.medicus.service;
 
 import com.csd.medicus.model.Patient;
+import com.csd.medicus.dto.PatientDto;
 
 import java.util.List;
 import java.util.Optional;

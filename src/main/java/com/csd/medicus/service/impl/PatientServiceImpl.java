@@ -5,9 +5,13 @@ import com.csd.medicus.repository.PatientRepository;
 import com.csd.medicus.service.PatientService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.csd.medicus.dto.PatientDto;
+import com.csd.medicus.mapper.PatientMapper;
+
 
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.*;
 
 @Service
 @Transactional
@@ -69,7 +73,7 @@ public class PatientServiceImpl implements PatientService {
     public List<PatientDto> searchPatients(String query) {
     return repo.searchPatients(query)
             .stream()
-            .map(patientMapper::toDto)
+            .map(PatientMapper::toDto)
             .collect(Collectors.toList());
     }
 }
