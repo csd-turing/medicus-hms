@@ -10,8 +10,11 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.Optional;
+import java.util.*;
+import java.util.stream.*;
 
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -42,4 +45,25 @@ void testGetPatientById() throws Exception {
             .andExpect(status().isOk());
 }
 
+  @Test
+    void testSearchEndpointReturnsEmptyArrayWhenNoResults() throws Exception {
+        when(service.searchPatients("ram")).thenReturn(Collections.emptyList());
+
+        mockMvc.perform(get("/api/v1/patients/search").param("query", "ram"))
+                .andExpect(status().isOk())
+                .andExpect(content().json("[]"));
+
+        verify(service, times(1)).searchPatients("ram");
+    }
+
+    @Test
+    void testSearchEndpointInvokesService() throws Exception {
+        // service returns an empty list for simplicity; we only assert controller wiring and status
+        when(service.searchPatients("9876")).thenReturn(List.of());
+
+        mockMvc.perform(get("/api/v1/patients/search").param("query", "9876"))
+                .andExpect(status().isOk());
+
+        verify(service, times(1)).searchPatients("9876");
+    }
 }

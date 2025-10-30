@@ -1,5 +1,6 @@
 package com.csd.medicus.controller;
 import com.csd.medicus.dto.PatientDto; import com.csd.medicus.mapper.PatientMapper; import com.csd.medicus.model.Patient; import com.csd.medicus.service.PatientService; import com.csd.medicus.validator.PatientValidator; import org.springframework.http.ResponseEntity; import org.springframework.web.bind.annotation.*;
+import java.util.List;
 @RestController @RequestMapping("/api/v1/patients") public class PatientController {
     private final PatientService service;
     public PatientController(PatientService service){ this.service=service; }
@@ -8,5 +9,9 @@ import com.csd.medicus.dto.PatientDto; import com.csd.medicus.mapper.PatientMapp
 public ResponseEntity<PatientDto> getById(@PathVariable Long id) {
     Patient patient = service.getPatientById(id);
     return ResponseEntity.ok(PatientMapper.toDto(patient));
+}
+@GetMapping("/search")
+public ResponseEntity<List<PatientDto>> searchPatients(@RequestParam String query) {
+    return ResponseEntity.ok(service.searchPatients(query));
 }
 }
