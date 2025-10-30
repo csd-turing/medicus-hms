@@ -41,10 +41,9 @@ public class PatientServiceImpl implements PatientService {
         Patient existing = patientRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Patient not found"));
 
-        existing.setName(patientDto.getName());
-        existing.setAge(patientDto.getAge());
+        existing.setName(patientDto.getFirstName());
         existing.setPhone(patientDto.getPhone());
-        existing.setAddress(patientDto.getAddress());
+        existing.setEmail(patientDto.getEmail());
 
         return PatientMapper.toDto(patientRepository.save(existing));
     }
