@@ -1,12 +1,14 @@
 package com.csd.medicus.service;
 
-import com.csd.medicus.dto.PatientDto;
+import com.csd.medicus.model.Patient;
+
 import java.util.List;
+import java.util.Optional;
 
 public interface PatientService {
-    PatientDto createPatient(PatientDto patientDto);
-    PatientDto getPatientById(Long id);
-    List<PatientDto> getAllPatients();
-    PatientDto updatePatient(Long id, PatientDto patientDto);
+    Patient savePatient(Patient p);
+    List<Patient> getAllPatients();
+    Optional<Patient> getPatientById(Long id);
+    Patient updatePatient(Long id, Patient p);
     void deletePatient(Long id);
 }
