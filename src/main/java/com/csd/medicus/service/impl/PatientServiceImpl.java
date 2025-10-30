@@ -64,4 +64,12 @@ public class PatientServiceImpl implements PatientService {
     public void deletePatient(Long id) {
         repo.deleteById(id);
     }
+
+    @Override
+    public List<PatientDto> searchPatients(String query) {
+    return repo.searchPatients(query)
+            .stream()
+            .map(patientMapper::toDto)
+            .collect(Collectors.toList());
+    }
 }
