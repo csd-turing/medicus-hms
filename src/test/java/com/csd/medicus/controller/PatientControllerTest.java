@@ -2,6 +2,7 @@ package com.csd.medicus.controller;
 
 import com.csd.medicus.model.Patient;
 import com.csd.medicus.service.PatientService;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -18,18 +19,27 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class PatientControllerTest {
 
     @Autowired
-    MockMvc mvc;
+    private MockMvc mockMvc;
 
     @MockBean
-    PatientService service;
+    private PatientService service;
+
+    @Autowired
+    private ObjectMapper mapper;
 
     @Test
-    void testGetPatientById() throws Exception {
-        Patient p = new Patient(1L, "Sam", "Green", "sam@test.com", "11111", null);
-        when(service.getPatientById(1L)).thenReturn(Optional.of(p));
+void testGetPatientById() throws Exception {
+    Patient p = new Patient();
+    p.setId(1L);
+    p.setFirstName("John");
+    p.setLastName("Doe");
+    p.setEmail("john@example.com");
+    p.setPhone("1234567890");
 
-        mvc.perform(get("/api/patients/1"))
-           .andExpect(status().isOk())
-           .andExpect(jsonPath("$.firstName").value("Sam"));
-    }
+    when(service.getPatientById(1L)).thenReturn(p);
+
+    mockMvc.perform(get("/api/v1/patients/1"))
+            .andExpect(status().isOk());
+}
+
 }

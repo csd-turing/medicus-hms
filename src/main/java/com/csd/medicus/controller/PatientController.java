@@ -4,4 +4,9 @@ import com.csd.medicus.dto.PatientDto; import com.csd.medicus.mapper.PatientMapp
     private final PatientService service;
     public PatientController(PatientService service){ this.service=service; }
     @PostMapping public ResponseEntity<PatientDto> create(@RequestBody PatientDto dto){ Patient p=PatientMapper.toEntity(dto); PatientValidator.validate(p); Patient saved=service.savePatient(p); return ResponseEntity.ok(PatientMapper.toDto(saved)); }
+@GetMapping("/{id}")
+public ResponseEntity<PatientDto> getById(@PathVariable Long id) {
+    Patient patient = service.getPatientById(id);
+    return ResponseEntity.ok(PatientMapper.toDto(patient));
+}
 }

@@ -5,50 +5,66 @@ import com.csd.medicus.repository.PatientRepository;
 import com.csd.medicus.service.impl.PatientServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
-
-import static org.junit.jupiter.api.Assertions.*;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 
 import java.util.Optional;
 
-@DataJpaTest
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
+
 class PatientServiceImplTest {
 
-    private PatientService patientService;
-    private final PatientRepository repo;
+    @Mock
+    private PatientRepository repo;
 
-    PatientServiceImplTest(PatientRepository repo) {
-        this.repo = repo;
-    }
+    @InjectMocks
+    private PatientServiceImpl service;
 
     @BeforeEach
-    void setup() {
-        patientService = new PatientServiceImpl(repo);
-    }
+void init() {
+    MockitoAnnotations.openMocks(this);
+}
 
-    @Test
-    void testCreatePatient() {
-        Patient p = new Patient(null, "John", "Doe", "john@test.com", "55555", null);
-        Patient saved = patientService.savePatient(p);
+private Patient createPatient(Long id) {
+    Patient p = new Patient();
+    p.setId(id);
+    p.setFirstName("John");
+    p.setLastName("Doe");
+    p.setEmail("john@example.com");
+    p.setPhone("1234567890");
+    return p;
+}
 
-        assertNotNull(saved.getId());
-        assertEquals("John", saved.getFirstName());
-    }
+@Test
+void testCreatePatient() {
+    Patient input = createPatient(null);
+    Patient saved = createPatient(1L);
 
-    @Test
-    void testUpdatePatient() {
-        Patient p = new Patient(null, "John", "Doe", "john@test.com", "55555", null);
-        Patient saved = patientService.savePatient(p);
+    when(repo.save(any())).thenReturn(saved);
 
-        Patient update = new Patient(null, "Johnny", "Doe", null, null, null);
-        Patient updated = patientService.updatePatient(saved.getId(), update);
+    Patient result = service.savePatient(input);
+    assertEquals(1L, result.getId());
+}
 
-        assertEquals("Johnny", updated.getFirstName());
-    }
+@Test
+void testGetPatient_NotFound() {
+    when(repo.findById(1L)).thenReturn(Optional.empty());
+    assertThrows(RuntimeException.class, () -> service.getPatientById(1L));
+}
 
-    @Test
-    void testGetPatient_NotFound() {
-        Optional<Patient> result = patientService.getPatientById(999L);
-        assertTrue(result.isEmpty());
-    }
+@Test
+void testUpdatePatient() {
+    Patient existing = createPatient(1L);
+    Patient updated = createPatient(1L);
+    updated.setLastName("Smith");
+
+    when(repo.findById(1L)).thenReturn(Optional.of(existing));
+    when(repo.save(any())).thenReturn(updated);
+
+    Patient result = service.updatePatient(1L, updated);
+    assertEquals("Smith", result.getLastName());
+}
+
 }
