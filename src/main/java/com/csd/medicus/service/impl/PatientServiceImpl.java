@@ -1,7 +1,7 @@
 package com.csd.medicus.service.impl;
 
 import com.csd.medicus.dto.PatientDto;
-import com.csd.medicus.entity.Patient;
+import com.csd.medicus.model.Patient;
 import com.csd.medicus.repository.PatientRepository;
 import com.csd.medicus.service.PatientService;
 import com.csd.medicus.mapper.PatientMapper;
