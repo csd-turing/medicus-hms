@@ -67,4 +67,15 @@ void testUpdatePatient() {
     assertEquals("Smith", result.getLastName());
 }
 
+@Test
+void testSearchPatients() {
+    when(repo.searchPatients("ram"))
+            .thenReturn(List.of(patient));
+
+    List<PatientDto> result = service.searchPatients("ram");
+
+    assertEquals(1, result.size());
+    verify(repo, times(1)).searchPatients("ram");
+}
+
 }
