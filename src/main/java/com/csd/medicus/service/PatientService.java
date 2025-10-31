@@ -4,7 +4,9 @@ import com.csd.medicus.model.Patient;
 import com.csd.medicus.dto.PatientDto;
 
 import java.util.List;
-import java.util.Optional;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 public interface PatientService {
 	Patient savePatient(Patient p);
@@ -17,5 +19,5 @@ public interface PatientService {
 
 	void deletePatient(Long id);
 
-	List<PatientDto> searchPatients(String query);
+	Page<PatientDto> searchPatients(String query, Pageable pageable);
 }

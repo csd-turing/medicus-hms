@@ -5,6 +5,9 @@ import com.csd.medicus.mapper.PatientMapper;
 import com.csd.medicus.model.Patient;
 import com.csd.medicus.service.PatientService;
 import com.csd.medicus.validator.PatientValidator;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
@@ -33,7 +36,16 @@ public class PatientController {
 	}
 
 	@GetMapping("/search")
-	public ResponseEntity<List<PatientDto>> searchPatients(@RequestParam String query) {
-		return ResponseEntity.ok(service.searchPatients(query));
-	}
+    public ResponseEntity<Page<com.csd.medicus.dto.PatientDto>> searchPatients(
+            @RequestParam(defaultValue = "") String query,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size
+    ) {
+        // sanitize inputs
+        int safePage = Math.max(0, page);
+        int safeSize = Math.max(1, Math.min(size, 100)); // apply a sensible upper cap of 100
+        PageRequest pageable = PageRequest.of(safePage, safeSize);
+        Page<com.csd.medicus.dto.PatientDto> result = service.searchPatients(query, pageable);
+        return ResponseEntity.ok(result);
+    }
 }
