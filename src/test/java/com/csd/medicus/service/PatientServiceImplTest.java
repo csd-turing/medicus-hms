@@ -275,4 +275,79 @@ class PatientServiceImplTest {
         verify(repo, times(1)).findById(2L);
         verify(repo, never()).save(any());
     }
+    
+    @Test
+	void testSavePatientNormalizesEmail() {
+	    Patient input = createPatient(null);
+	    input.setEmail("  USER+Tag@ExAmPlE.CoM  ");
+	    Patient saved = createPatient(1L);
+	    saved.setEmail("user+tag@example.com");
+
+	    when(repo.save(any())).thenReturn(saved);
+
+	    Patient result = service.savePatient(input);
+
+	    ArgumentCaptor<Patient> captor = ArgumentCaptor.forClass(Patient.class);
+	    verify(repo, times(1)).save(captor.capture());
+	    Patient passedToRepo = captor.getValue();
+
+	    // ensure service normalized the email before saving
+	    assertEquals("user+tag@example.com", passedToRepo.getEmail());
+	    // result from repo should be returned
+	    assertEquals("user+tag@example.com", result.getEmail());
+	}
+
+	@Test
+	void testUpdatePatientNormalizesEmail() {
+	    Patient existing = createPatient(1L);
+	    when(repo.findById(1L)).thenReturn(Optional.of(existing));
+
+	    Patient update = new Patient();
+	    update.setEmail("  ADMIN@Example.COM  ");
+
+	    Patient saved = createPatient(1L);
+	    saved.setEmail("admin@example.com");
+	    when(repo.save(any())).thenReturn(saved);
+
+	    Patient result = service.updatePatient(1L, update);
+
+	    ArgumentCaptor<Patient> captor = ArgumentCaptor.forClass(Patient.class);
+	    verify(repo, times(1)).save(captor.capture());
+	    Patient passedToRepo = captor.getValue();
+
+	    assertEquals("admin@example.com", passedToRepo.getEmail());
+	    assertEquals("admin@example.com", result.getEmail());
+	}
+
+	@Test
+	void testSavePatientInvalidEmailThrows() {
+	    Patient input = createPatient(null);
+	    input.setEmail("invalid-email-without-at");
+
+	    // repo.save should not be called because validation should fail earlier
+	    when(repo.save(any())).thenAnswer(invocation -> {
+	        fail("repo.save should not be invoked for invalid email");
+	        return null;
+	    });
+
+	    assertThrows(IllegalArgumentException.class, () -> service.savePatient(input));
+	    verify(repo, never()).save(any());
+	}
+
+	@Test
+	void testUpdatePatientInvalidEmailThrows() {
+	    Patient existing = createPatient(2L);
+	    when(repo.findById(2L)).thenReturn(Optional.of(existing));
+
+	    Patient update = new Patient();
+	    update.setEmail("bad email@ex ample.com");
+
+	    when(repo.save(any())).thenAnswer(invocation -> {
+	        fail("repo.save should not be invoked for invalid email");
+	        return null;
+	    });
+
+	    assertThrows(IllegalArgumentException.class, () -> service.updatePatient(2L, update));
+	    verify(repo, never()).save(any());
+	}
 }
