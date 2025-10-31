@@ -1,4 +1,4 @@
-package com.csd.medicus.web;
+package com.csd.medicus.controller;
 
 import com.csd.medicus.model.Patient;
 import com.csd.medicus.service.PatientService;
