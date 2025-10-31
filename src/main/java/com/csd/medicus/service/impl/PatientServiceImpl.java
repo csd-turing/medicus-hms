@@ -7,6 +7,7 @@ import com.csd.medicus.dto.PatientDto;
 import com.csd.medicus.mapper.PatientMapper;
 import com.csd.medicus.util.PhoneNormalizer;
 import com.csd.medicus.util.EmailNormalizer;
+import com.csd.medicus.exception.DuplicateEntityException;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -20,11 +21,13 @@ import java.util.List;
 /**
  * Service implementation for patient operations.
  *
- * This class integrates phone normalization and email normalization:
- * - Phone values are normalized to E.164 before saving/updating.
- * - Email values are trimmed/lowercased and validated before saving/updating.
+ * Responsibilities:
+ * - Basic validation of required fields
+ * - Normalization of phone (E.164) and email (trim/lowercase)
+ * - Duplicate detection (email OR phone) before creating a new patient
  *
- * Validation errors from normalizers propagate as IllegalArgumentException.
+ * Duplicate detection occurs only on create (savePatient). Updates will not be blocked by this
+ * check so that existing records can be updated (but callers should ensure they do not introduce duplicates).
  */
 @Service
 @Transactional
@@ -50,16 +53,36 @@ public class PatientServiceImpl implements PatientService {
         p.setFirstName(p.getFirstName().trim());
         p.setLastName(p.getLastName().trim());
 
-        // Normalize phone if present (preserve null / empty -> null)
+        // Normalize and validate phone if present (preserve null / empty -> null)
+        String normalizedPhone = null;
         if (p.getPhone() != null) {
-            String normalizedPhone = PhoneNormalizer.normalize(p.getPhone());
+            normalizedPhone = PhoneNormalizer.normalize(p.getPhone());
             p.setPhone(normalizedPhone);
         }
 
         // Normalize and validate email if present (normalize returns null for empty)
+        String normalizedEmail = null;
         if (p.getEmail() != null) {
-            String normalizedEmail = EmailNormalizer.normalize(p.getEmail());
+            normalizedEmail = EmailNormalizer.normalize(p.getEmail());
             p.setEmail(normalizedEmail);
+        }
+
+        // Duplicate detection: if either normalizedEmail or normalizedPhone is present and already exists, reject create.
+        // We only run the check on create (when id is null). For updates, a different workflow may be desired.
+        if (p.getId() == null) {
+            boolean emailExists = normalizedEmail != null && repo.existsByEmail(normalizedEmail);
+            boolean phoneExists = normalizedPhone != null && repo.existsByPhone(normalizedPhone);
+
+            if (emailExists || phoneExists) {
+                String conflictField = emailExists ? "email" : "phone";
+                String conflictValue = emailExists ? normalizedEmail : normalizedPhone;
+                throw new DuplicateEntityException("Patient with same " + conflictField + " already exists: " + conflictValue);
+            }
+
+            // convenience combined check as an extra guard (in case repository derivation differs)
+            if ((normalizedEmail != null || normalizedPhone != null) && repo.existsByEmailOrPhone(normalizedEmail, normalizedPhone)) {
+                throw new DuplicateEntityException("Patient with same email or phone already exists");
+            }
         }
 
         return repo.save(p);
