@@ -72,4 +72,9 @@ class PhoneNormalizerTest {
     void testUnsupportedDefaultCountry() {
         assertThrows(IllegalArgumentException.class, () -> PhoneNormalizer.normalize("12345678", "ZZ"));
     }
+    
+    @Test
+    void testNullInputRejected() {
+        assertThrows(IllegalArgumentException.class, () -> PhoneNormalizer.normalize(null));
+    }
 }

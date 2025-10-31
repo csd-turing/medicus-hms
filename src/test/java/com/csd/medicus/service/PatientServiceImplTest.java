@@ -6,6 +6,7 @@ import com.csd.medicus.service.impl.PatientServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.mockito.Captor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
@@ -29,6 +30,9 @@ class PatientServiceImplTest {
 
 	@InjectMocks
 	private PatientServiceImpl service;
+	
+	@Captor
+    private ArgumentCaptor<Patient> patientCaptor;
 
 	@BeforeEach
 	void init() {
@@ -189,4 +193,40 @@ class PatientServiceImplTest {
 	    Pageable used = captor.getValue();
 	    assertTrue(used.getPageSize() <= 100);
 	}
+	
+	@Test
+    void savePatient_normalizesPhoneBeforeSave() {
+        // Arrange: patient with an IN national number (no prefix)
+        Patient p = new Patient();
+        p.setFirstName("John");
+        p.setLastName("Doe");
+        p.setPhone("9123456789");
+
+        // Mock repository to return the same patient passed in (common pattern)
+        when(repo.save(any(Patient.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        // Act
+        Patient saved = service.savePatient(p);
+
+        // Assert: repository.save should have been called with normalized phone
+        verify(repo, times(1)).save(patientCaptor.capture());
+        Patient captured = patientCaptor.getValue();
+
+        assertNotNull(saved);
+        assertEquals("+919123456789", captured.getPhone());
+        assertEquals(captured.getPhone(), saved.getPhone());
+    }
+
+    @Test
+    void savePatient_invalidPhone_throws() {
+        // Arrange: patient with alphabetic characters in phone -> invalid
+        Patient p = new Patient();
+        p.setFirstName("Jane");
+        p.setLastName("Smith");
+        p.setPhone("123-ABC-7890");
+
+        // Act & Assert: savePatient should throw IllegalArgumentException and repo.save should not be called
+        assertThrows(IllegalArgumentException.class, () -> service.savePatient(p));
+        verify(repo, never()).save(any());
+    }
 }
