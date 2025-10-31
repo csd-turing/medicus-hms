@@ -25,9 +25,9 @@ import java.util.List;
  * - getAllPatients() returns only non-deleted patients.
  * - getPatientById(id) returns the patient only if not deleted.
  * - deletePatient(id) performs a soft-delete (sets isDeleted = true).
- * - searchPatients(...) already delegates to repository which filters out deleted rows.
+ * - searchPatients(...) delegates to repository which filters out deleted rows.
  *
- * Duplicate detection and normalization behavior remain intact and operate on normalized values.
+ * Admin operations are implemented here (listAllPatients, restorePatient, purgePatient).
  */
 @Service
 @Transactional
@@ -93,9 +93,8 @@ public class PatientServiceImpl implements PatientService {
 
     @Override
     public List<Patient> getAllPatients() {
-        // Use repository.findAll() but filter deleted rows — choose to call save-time repository derived method
-        // Simpler approach: load all and filter, but prefer JPA query-level filtering; since no findAllNotDeleted method was added,
-        // use search with empty query? For clarity and reliability, filter in memory after repo.findAll()
+        // Prefer repository-level filtering, but repo doesn't have derived method name for findAllByIsDeletedFalse in your paste.
+        // Use in-memory filter for minimal-diff approach while preserving semantics.
         List<Patient> all = repo.findAll();
         return all.stream().filter(pt -> !pt.isDeleted()).toList();
     }
@@ -171,5 +170,36 @@ public class PatientServiceImpl implements PatientService {
 
         // Map entities -> DTOs while keeping Page metadata
         return entityPage.map(PatientMapper::toDto);
+    }
+
+    // Admin operations
+
+    @Override
+    public List<Patient> listAllPatients(boolean includeDeleted) {
+        if (includeDeleted) {
+            return repo.findAll();
+        } else {
+            // prefer repository-level behaviour if available; fall back to filter
+            List<Patient> all = repo.findAll();
+            return all.stream().filter(p -> !p.isDeleted()).toList();
+        }
+    }
+
+    @Override
+    public Patient restorePatient(Long id) {
+        Patient p = repo.findById(id).orElseThrow(() -> new RuntimeException("Patient not found: " + id));
+        if (!p.isDeleted()) {
+            throw new IllegalStateException("Patient with id " + id + " is not deleted");
+        }
+        p.setDeleted(false);
+        return repo.save(p);
+    }
+
+    @Override
+    public void purgePatient(Long id) {
+        if (!repo.existsById(id)) {
+            throw new RuntimeException("Patient not found: " + id);
+        }
+        repo.deleteById(id);
     }
 }
