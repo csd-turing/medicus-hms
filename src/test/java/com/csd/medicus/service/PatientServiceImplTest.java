@@ -6,6 +6,7 @@ import com.csd.medicus.service.impl.PatientServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.mockito.Captor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
@@ -29,6 +30,9 @@ class PatientServiceImplTest {
 
 	@InjectMocks
 	private PatientServiceImpl service;
+	
+	@Captor
+    private ArgumentCaptor<Patient> patientCaptor;
 
 	@BeforeEach
 	void init() {
@@ -189,4 +193,86 @@ class PatientServiceImplTest {
 	    Pageable used = captor.getValue();
 	    assertTrue(used.getPageSize() <= 100);
 	}
+	
+	@Test
+    void savePatient_normalizesPhoneBeforeSave() {
+        // Arrange: patient with an IN national number (no prefix)
+        Patient p = new Patient();
+        p.setFirstName("John");
+        p.setLastName("Doe");
+        p.setPhone("9123456789");
+
+        // Mock repository to return the same patient passed in (common pattern)
+        when(repo.save(any(Patient.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        // Act
+        Patient saved = service.savePatient(p);
+
+        // Assert: repository.save should have been called with normalized phone
+        verify(repo, times(1)).save(patientCaptor.capture());
+        Patient captured = patientCaptor.getValue();
+
+        assertNotNull(saved);
+        assertEquals("+919123456789", captured.getPhone());
+        assertEquals(captured.getPhone(), saved.getPhone());
+    }
+
+    @Test
+    void savePatient_invalidPhone_throws() {
+        // Arrange: patient with alphabetic characters in phone -> invalid
+        Patient p = new Patient();
+        p.setFirstName("Jane");
+        p.setLastName("Smith");
+        p.setPhone("123-ABC-7890");
+
+        // Act & Assert: savePatient should throw IllegalArgumentException and repo.save should not be called
+        assertThrows(IllegalArgumentException.class, () -> service.savePatient(p));
+        verify(repo, never()).save(any());
+    }
+    
+    @Test
+    void updatePatient_normalizesPhoneBeforeUpdate() {
+        // Arrange: existing patient in repo with some phone (could be null or old value)
+        Patient existing = new Patient();
+        existing.setId(1L);
+        existing.setFirstName("Old");
+        existing.setLastName("Name");
+        existing.setPhone("+911111111111");
+
+        when(repo.findById(1L)).thenReturn(Optional.of(existing));
+        when(repo.save(any(Patient.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        // Incoming update DTO / entity with a national IN number (no prefix)
+        Patient update = new Patient();
+        update.setPhone("9123456789"); // should normalize to +919123456789
+
+        // Act
+        Patient saved = service.updatePatient(1L, update);
+
+        // Assert
+        verify(repo, times(1)).findById(1L);
+        verify(repo, times(1)).save(patientCaptor.capture());
+        Patient captured = patientCaptor.getValue();
+
+        assertEquals("+919123456789", captured.getPhone());
+        assertEquals("+919123456789", saved.getPhone());
+    }
+
+    @Test
+    void updatePatient_invalidPhone_throws() {
+        // Arrange: existing patient must be found for update
+        Patient existing = new Patient();
+        existing.setId(2L);
+        existing.setFirstName("Existing");
+        existing.setLastName("Person");
+        when(repo.findById(2L)).thenReturn(Optional.of(existing));
+
+        Patient update = new Patient();
+        update.setPhone("123-ABC-0000"); // invalid: contains letters
+
+        // Act & Assert
+        assertThrows(IllegalArgumentException.class, () -> service.updatePatient(2L, update));
+        verify(repo, times(1)).findById(2L);
+        verify(repo, never()).save(any());
+    }
 }
