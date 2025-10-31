@@ -229,4 +229,50 @@ class PatientServiceImplTest {
         assertThrows(IllegalArgumentException.class, () -> service.savePatient(p));
         verify(repo, never()).save(any());
     }
+    
+    @Test
+    void updatePatient_normalizesPhoneBeforeUpdate() {
+        // Arrange: existing patient in repo with some phone (could be null or old value)
+        Patient existing = new Patient();
+        existing.setId(1L);
+        existing.setFirstName("Old");
+        existing.setLastName("Name");
+        existing.setPhone("+911111111111");
+
+        when(repo.findById(1L)).thenReturn(Optional.of(existing));
+        when(repo.save(any(Patient.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        // Incoming update DTO / entity with a national IN number (no prefix)
+        Patient update = new Patient();
+        update.setPhone("9123456789"); // should normalize to +919123456789
+
+        // Act
+        Patient saved = service.updatePatient(1L, update);
+
+        // Assert
+        verify(repo, times(1)).findById(1L);
+        verify(repo, times(1)).save(patientCaptor.capture());
+        Patient captured = patientCaptor.getValue();
+
+        assertEquals("+919123456789", captured.getPhone());
+        assertEquals("+919123456789", saved.getPhone());
+    }
+
+    @Test
+    void updatePatient_invalidPhone_throws() {
+        // Arrange: existing patient must be found for update
+        Patient existing = new Patient();
+        existing.setId(2L);
+        existing.setFirstName("Existing");
+        existing.setLastName("Person");
+        when(repo.findById(2L)).thenReturn(Optional.of(existing));
+
+        Patient update = new Patient();
+        update.setPhone("123-ABC-0000"); // invalid: contains letters
+
+        // Act & Assert
+        assertThrows(IllegalArgumentException.class, () -> service.updatePatient(2L, update));
+        verify(repo, times(1)).findById(2L);
+        verify(repo, never()).save(any());
+    }
 }
