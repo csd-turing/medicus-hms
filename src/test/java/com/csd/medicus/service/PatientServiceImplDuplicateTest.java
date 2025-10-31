@@ -95,4 +95,37 @@ class PatientServiceImplDuplicateTest {
         assertEquals(normalizedEmail, result.getEmail());
         assertEquals(normalizedPhone, result.getPhone());
     }
+    
+    @Test
+    void createShouldRejectWhenCombinedCheckFindsConflictEvenIfIndividualChecksFalse() {
+        Patient input = basePatient();
+        String normalizedEmail = "alice@example.com";
+        String normalizedPhone = "+919123456789";
+
+        // individual checks claim no conflict
+        when(repo.existsByEmail(normalizedEmail)).thenReturn(false);
+        when(repo.existsByPhone(normalizedPhone)).thenReturn(false);
+
+        // but combined check reports a conflict (edge case)
+        when(repo.existsByEmailOrPhone(normalizedEmail, normalizedPhone)).thenReturn(true);
+
+        assertThrows(DuplicateEntityException.class, () -> service.savePatient(input));
+        verify(repo, never()).save(any());
+    }
+
+    @Test
+    void createShouldRejectWhenOneNormalizedValueIsNullButCombinedCheckFindsConflict() {
+        Patient input = basePatient();
+        // Simulate empty email that normalizer will turn into null
+        input.setEmail("   "); // EmailNormalizer.normalize -> null in production path
+        String normalizedEmail = null;
+        String normalizedPhone = "+919123456789";
+
+        // repo.existsByEmail should not be called with null in typical Spring JPA, but we can stub defensively:
+        when(repo.existsByPhone(normalizedPhone)).thenReturn(false);
+        when(repo.existsByEmailOrPhone(normalizedEmail, normalizedPhone)).thenReturn(true);
+
+        assertThrows(DuplicateEntityException.class, () -> service.savePatient(input));
+        verify(repo, never()).save(any());
+    }
 }
