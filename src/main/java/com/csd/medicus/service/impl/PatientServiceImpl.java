@@ -3,6 +3,9 @@ package com.csd.medicus.service.impl;
 import com.csd.medicus.model.Patient;
 import com.csd.medicus.repository.PatientRepository;
 import com.csd.medicus.service.PatientService;
+import com.csd.medicus.dto.PatientDto;
+import com.csd.medicus.mapper.PatientMapper;
+import com.csd.medicus.util.PhoneNormalizer;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -10,14 +13,16 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import com.csd.medicus.dto.PatientDto;
-import com.csd.medicus.mapper.PatientMapper;
-
 
 import java.util.List;
-import java.util.Optional;
-import java.util.stream.*;
 
+/**
+ * Service implementation for patient operations.
+ *
+ * This class now integrates phone normalization: before saving/updating, phone numbers
+ * are normalized to E.164 using PhoneNormalizer. Validation errors from normalization
+ * are propagated as IllegalArgumentException.
+ */
 @Service
 @Transactional
 public class PatientServiceImpl implements PatientService {
@@ -41,6 +46,13 @@ public class PatientServiceImpl implements PatientService {
         // normalize / trim
         p.setFirstName(p.getFirstName().trim());
         p.setLastName(p.getLastName().trim());
+
+        // Normalize phone if present (preserve null / empty -> null)
+        if (p.getPhone() != null) {
+            String normalized = PhoneNormalizer.normalize(p.getPhone());
+            p.setPhone(normalized);
+        }
+
         return repo.save(p);
     }
 
@@ -65,7 +77,11 @@ public class PatientServiceImpl implements PatientService {
             existing.setLastName(p.getLastName().trim());
         }
         if (p.getEmail() != null) existing.setEmail(p.getEmail().trim());
-        if (p.getPhone() != null) existing.setPhone(p.getPhone().trim());
+        if (p.getPhone() != null) {
+            // normalize before updating
+            String normalized = PhoneNormalizer.normalize(p.getPhone());
+            existing.setPhone(normalized);
+        }
         return repo.save(existing);
     }
 
