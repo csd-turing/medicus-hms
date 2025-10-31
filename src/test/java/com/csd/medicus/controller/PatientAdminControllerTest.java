@@ -1,4 +1,4 @@
-package com.csd.medicus.controller;
+package com.csd.medicus.web;
 
 import com.csd.medicus.model.Patient;
 import com.csd.medicus.service.PatientService;
@@ -118,6 +118,17 @@ class PatientAdminControllerTest {
                 .andExpect(status().isNotFound());
 
         verify(service, times(1)).restorePatient(99L);
+    }
+
+    @Test
+    void restore_notDeleted_mapsToConflict() throws Exception {
+        // Service throws IllegalStateException when the patient exists but is not deleted.
+        when(service.restorePatient(10L)).thenThrow(new IllegalStateException("Patient with id 10 is not deleted"));
+
+        mvc.perform(post("/api/v1/admin/patients/10/restore"))
+                .andExpect(status().isConflict());
+
+        verify(service, times(1)).restorePatient(10L);
     }
 
     @Test
