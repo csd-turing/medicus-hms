@@ -8,12 +8,15 @@ import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+
 import com.csd.medicus.dto.PatientDto;
 
 import java.util.Optional;
-import java.util.Collections;
 import java.util.List;
-import java.util.stream.*;
 import java.time.LocalDateTime;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -72,47 +75,69 @@ class PatientServiceImplTest {
 	}
 
 	@Test
-	void testSearchPatients() {
+	void testSearchPatients_paginated() {
 		Patient patient = new Patient(1L, "Ram Kumar", "9876543210", "ram@example.com", "Delhi", LocalDateTime.now());
-		when(repo.searchPatients("ram")).thenReturn(List.of(patient));
+	    Pageable pageable = PageRequest.of(0, 10);
+	    Page<Patient> pageFromRepo = new PageImpl<>(List.of(patient), pageable, 1);
 
-		List<PatientDto> result = service.searchPatients("ram");
+	    when(repo.searchPatients("ram", pageable)).thenReturn(pageFromRepo);
 
-		assertEquals(1, result.size());
-		verify(repo, times(1)).searchPatients("ram");
+	    Page<PatientDto> result = service.searchPatients("ram", pageable);
+
+	    assertEquals(1, result.getTotalElements());
+	    assertEquals(1, result.getContent().size());
+	    assertEquals("Ram Kumar", result.getContent().get(0).getFirstName());
+	    verify(repo, times(1)).searchPatients("ram", pageable);
 	}
 
 	@Test
 	void testSearchByPhonePartial() {
-		Patient patient = new Patient(1L, "Ram Kumar", "9876543210", "ram@example.com", "Delhi", LocalDateTime.now());
-		when(repo.searchPatients("9876")).thenReturn(List.of(patient));
+	    Patient patient = new Patient();
+	    patient.setId(1L);
+	    patient.setFirstName("Ram Kumar");
+	    patient.setEmail("ram@example.com");
+	    patient.setPhone("9876543210");
+	    Pageable pageable = PageRequest.of(0, 10);
+	    Page<Patient> repoPage = new PageImpl<>(List.of(patient), pageable, 1);
 
-		List<PatientDto> result = service.searchPatients("9876");
+	    when(repo.searchPatients(eq("9876"), any(Pageable.class))).thenReturn(repoPage);
 
-		assertEquals(1, result.size());
-		verify(repo, times(1)).searchPatients("9876");
+	    Page<PatientDto> result = service.searchPatients("9876", pageable);
+
+	    assertEquals(1L, result.getTotalElements());
+	    assertEquals(1, result.getContent().size());
+	    assertEquals("9876543210", result.getContent().get(0).getPhone());
+	    verify(repo, times(1)).searchPatients(eq("9876"), any(Pageable.class));
 	}
 
 	@Test
 	void testSearchNoResults() {
-		when(repo.searchPatients("none")).thenReturn(Collections.emptyList());
+	    Pageable pageable = PageRequest.of(0, 10);
+	    Page<Patient> emptyPage = Page.empty(pageable);
 
-		List<PatientDto> result = service.searchPatients("none");
+	    when(repo.searchPatients(eq("none"), any(Pageable.class))).thenReturn(emptyPage);
 
-		assertNotNull(result);
-		assertTrue(result.isEmpty());
-		verify(repo, times(1)).searchPatients("none");
+	    Page<PatientDto> result = service.searchPatients("none", pageable);
+
+	    assertNotNull(result);
+	    assertTrue(result.getContent().isEmpty());
+	    assertEquals(0L, result.getTotalElements());
+	    verify(repo, times(1)).searchPatients(eq("none"), any(Pageable.class));
 	}
 
 	@Test
 	void testSearchMultipleResults() {
-		Patient p1 = new Patient(1L, "Ram Kumar", "9876543210", "ram@example.com", "Delhi", LocalDateTime.now());
-		Patient p2 = new Patient(2L, "Ramesh", "9876000000", "ramesh@example.com", "Delhi", LocalDateTime.now());
-		when(repo.searchPatients("ram")).thenReturn(List.of(p1, p2));
+	    Patient p1 = new Patient(1L, "Ram Kumar", "9876543210", "ram@example.com", "Delhi", LocalDateTime.now());
+	    Patient p2 = new Patient(2L, "Ramesh", "9876000000", "ramesh@example.com", "Delhi", LocalDateTime.now());
+	    Pageable pageable = PageRequest.of(0, 10);
+	    Page<Patient> repoPage = new PageImpl<>(List.of(p1, p2), pageable, 2);
 
-		List<PatientDto> result = service.searchPatients("ram");
+	    when(repo.searchPatients(eq("ram"), any(Pageable.class))).thenReturn(repoPage);
 
-		assertEquals(2, result.size());
-		verify(repo, times(1)).searchPatients("ram");
+	    Page<PatientDto> result = service.searchPatients("ram", pageable);
+
+	    assertEquals(2L, result.getTotalElements());
+	    assertEquals(2, result.getContent().size());
+	    verify(repo, times(1)).searchPatients(eq("ram"), any(Pageable.class));
 	}
 }
