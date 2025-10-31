@@ -20,4 +20,11 @@ public interface PatientService {
 	void deletePatient(Long id);
 
 	Page<PatientDto> searchPatients(String query, Pageable pageable);
+
+	// Admin operations (Feature 1 - admin-first)
+	List<Patient> listAllPatients(boolean includeDeleted);
+
+	Patient restorePatient(Long id);
+
+	void purgePatient(Long id);
 }
