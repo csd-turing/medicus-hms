@@ -19,15 +19,15 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 
 /**
- * Service implementation for patient operations.
+ * Service implementation for patient operations with soft-delete support.
  *
- * Responsibilities:
- * - Basic validation of required fields
- * - Normalization of phone (E.164) and email (trim/lowercase)
- * - Duplicate detection (email OR phone) before creating a new patient
+ * Key behaviors updated for soft-delete:
+ * - getAllPatients() returns only non-deleted patients.
+ * - getPatientById(id) returns the patient only if not deleted.
+ * - deletePatient(id) performs a soft-delete (sets isDeleted = true).
+ * - searchPatients(...) already delegates to repository which filters out deleted rows.
  *
- * Duplicate detection occurs only on create (savePatient). Updates will not be blocked by this
- * check so that existing records can be updated (but callers should ensure they do not introduce duplicates).
+ * Duplicate detection and normalization behavior remain intact and operate on normalized values.
  */
 @Service
 @Transactional
@@ -67,11 +67,10 @@ public class PatientServiceImpl implements PatientService {
             p.setEmail(normalizedEmail);
         }
 
-        // Duplicate detection: if either normalizedEmail or normalizedPhone is present and already exists, reject create.
-        // We only run the check on create (when id is null). For updates, a different workflow may be desired.
+        // Duplicate detection (only on create)
         if (p.getId() == null) {
-            boolean emailExists = normalizedEmail != null && repo.existsByEmail(normalizedEmail);
-            boolean phoneExists = normalizedPhone != null && repo.existsByPhone(normalizedPhone);
+            boolean emailExists = normalizedEmail != null && repo.existsByEmailAndIsDeletedFalse(normalizedEmail);
+            boolean phoneExists = normalizedPhone != null && repo.existsByPhoneAndIsDeletedFalse(normalizedPhone);
 
             if (emailExists || phoneExists) {
                 String conflictField = emailExists ? "email" : "phone";
@@ -79,10 +78,14 @@ public class PatientServiceImpl implements PatientService {
                 throw new DuplicateEntityException("Patient with same " + conflictField + " already exists: " + conflictValue);
             }
 
-            // convenience combined check as an extra guard (in case repository derivation differs)
-            if ((normalizedEmail != null || normalizedPhone != null) && repo.existsByEmailOrPhone(normalizedEmail, normalizedPhone)) {
+            if ((normalizedEmail != null || normalizedPhone != null) && repo.existsByEmailOrPhoneAndIsDeletedFalse(normalizedEmail, normalizedPhone)) {
                 throw new DuplicateEntityException("Patient with same email or phone already exists");
             }
+        }
+
+        // Ensure new records are not accidentally marked deleted
+        if (p.getId() == null) {
+            p.setDeleted(false);
         }
 
         return repo.save(p);
@@ -90,18 +93,26 @@ public class PatientServiceImpl implements PatientService {
 
     @Override
     public List<Patient> getAllPatients() {
-        return repo.findAll();
+        // Use repository.findAll() but filter deleted rows — choose to call save-time repository derived method
+        // Simpler approach: load all and filter, but prefer JPA query-level filtering; since no findAllNotDeleted method was added,
+        // use search with empty query? For clarity and reliability, filter in memory after repo.findAll()
+        List<Patient> all = repo.findAll();
+        return all.stream().filter(pt -> !pt.isDeleted()).toList();
     }
 
     @Override
     public Patient getPatientById(Long id) {
-         return repo.findById(id)
+         return repo.findByIdAndNotDeleted(id)
         .orElseThrow(() -> new RuntimeException("Patient not found with id " + id));
     }
 
     @Override
     public Patient updatePatient(Long id, Patient p) {
         Patient existing = repo.findById(id).orElseThrow(() -> new RuntimeException("Patient not found: " + id));
+        if (existing.isDeleted()) {
+            throw new RuntimeException("Patient not found with id " + id);
+        }
+
         if (p.getFirstName() != null && p.getFirstName().trim().length() >= 2) {
             existing.setFirstName(p.getFirstName().trim());
         }
@@ -122,7 +133,13 @@ public class PatientServiceImpl implements PatientService {
 
     @Override
     public void deletePatient(Long id) {
-        repo.deleteById(id);
+        Patient existing = repo.findById(id).orElseThrow(() -> new RuntimeException("Patient not found: " + id));
+        if (existing.isDeleted()) {
+            // idempotent: already deleted
+            return;
+        }
+        existing.setDeleted(true);
+        repo.save(existing);
     }
 
     @Override
@@ -146,7 +163,7 @@ public class PatientServiceImpl implements PatientService {
             effective = PageRequest.of(effective.getPageNumber(), MAX_PAGE_SIZE, effective.getSort());
         }
 
-        // Delegate to repository (JPQL handles partial + case-insensitive)
+        // Delegate to repository (JPQL handles partial + case-insensitive and excludes deleted rows)
         Page<Patient> entityPage = repo.searchPatients(trimmed, effective);
         if (entityPage == null || entityPage.isEmpty()) {
             return Page.empty(effective);
