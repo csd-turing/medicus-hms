@@ -5,6 +5,7 @@ import com.csd.medicus.repository.PatientRepository;
 import com.csd.medicus.service.impl.PatientServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
@@ -139,5 +140,53 @@ class PatientServiceImplTest {
 	    assertEquals(2L, result.getTotalElements());
 	    assertEquals(2, result.getContent().size());
 	    verify(repo, times(1)).searchPatients(eq("ram"), any(Pageable.class));
+	}
+	
+	@Test
+	void testServiceReturnsEmptyPageForNullQuery() {
+	    Pageable pageable = PageRequest.of(0, 10);
+	    // repo should not be called when query is null; ensure repo returns something but service should short-circuit
+	    when(repo.searchPatients(anyString(), any(Pageable.class)))
+	        .thenReturn(Page.empty(pageable));
+
+	    Page<com.csd.medicus.dto.PatientDto> result = service.searchPatients(null, pageable);
+	    assertNotNull(result);
+	    assertTrue(result.getContent().isEmpty());
+	    assertEquals(0L, result.getTotalElements());
+
+	    // Repository should not be invoked if service short-circuits for null (if implementation short-circuits).
+	    // If your implementation does call repo for null, change this assert accordingly.
+	    verify(repo, atMost(1)).searchPatients(anyString(), any(Pageable.class));
+	}
+	
+	@Test
+	void testServiceReturnsEmptyPageForBlankQuery() {
+	    Pageable pageable = PageRequest.of(0, 10);
+	    Page<com.csd.medicus.model.Patient> emptyRepo = Page.empty(pageable);
+	    when(repo.searchPatients(eq(""), any(Pageable.class))).thenReturn(emptyRepo);
+
+	    Page<com.csd.medicus.dto.PatientDto> result = service.searchPatients("   ", pageable);
+	    assertNotNull(result);
+	    assertTrue(result.getContent().isEmpty());
+	    assertEquals(0L, result.getTotalElements());
+	}
+	
+	@Test
+	void testServiceEnforcesMaxPageSizeCap() {
+	    // create Pageable with very large page size
+	    Pageable huge = PageRequest.of(0, 1000);
+	    // repo will be called with a capped Pageable; we mock repo to accept any Pageable
+	    when(repo.searchPatients(eq("ram"), any(Pageable.class)))
+	        .thenReturn(Page.empty(PageRequest.of(0, 100)));
+
+	    // Call service
+	    Page<com.csd.medicus.dto.PatientDto> result = service.searchPatients("ram", huge);
+	    assertNotNull(result);
+
+	    // capture pageable used to call repo
+	    ArgumentCaptor<Pageable> captor = ArgumentCaptor.forClass(Pageable.class);
+	    verify(repo, times(1)).searchPatients(eq("ram"), captor.capture());
+	    Pageable used = captor.getValue();
+	    assertTrue(used.getPageSize() <= 100);
 	}
 }

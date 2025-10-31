@@ -37,7 +37,7 @@ public class PatientController {
 
 	@GetMapping("/search")
     public ResponseEntity<Page<com.csd.medicus.dto.PatientDto>> searchPatients(
-            @RequestParam String query,
+            @RequestParam(defaultValue = "") String query,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size
     ) {
