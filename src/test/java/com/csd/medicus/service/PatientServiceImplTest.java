@@ -16,55 +16,55 @@ import static org.mockito.Mockito.*;
 
 class PatientServiceImplTest {
 
-    @Mock
-    private PatientRepository repo;
+	@Mock
+	private PatientRepository repo;
 
-    @InjectMocks
-    private PatientServiceImpl service;
+	@InjectMocks
+	private PatientServiceImpl service;
 
-    @BeforeEach
-void init() {
-    MockitoAnnotations.openMocks(this);
-}
+	@BeforeEach
+	void init() {
+		MockitoAnnotations.openMocks(this);
+	}
 
-private Patient createPatient(Long id) {
-    Patient p = new Patient();
-    p.setId(id);
-    p.setFirstName("John");
-    p.setLastName("Doe");
-    p.setEmail("john@example.com");
-    p.setPhone("1234567890");
-    return p;
-}
+	private Patient createPatient(Long id) {
+		Patient p = new Patient();
+		p.setId(id);
+		p.setFirstName("John");
+		p.setLastName("Doe");
+		p.setEmail("john@example.com");
+		p.setPhone("1234567890");
+		return p;
+	}
 
-@Test
-void testCreatePatient() {
-    Patient input = createPatient(null);
-    Patient saved = createPatient(1L);
+	@Test
+	void testCreatePatient() {
+		Patient input = createPatient(null);
+		Patient saved = createPatient(1L);
 
-    when(repo.save(any())).thenReturn(saved);
+		when(repo.save(any())).thenReturn(saved);
 
-    Patient result = service.savePatient(input);
-    assertEquals(1L, result.getId());
-}
+		Patient result = service.savePatient(input);
+		assertEquals(1L, result.getId());
+	}
 
-@Test
-void testGetPatient_NotFound() {
-    when(repo.findById(1L)).thenReturn(Optional.empty());
-    assertThrows(RuntimeException.class, () -> service.getPatientById(1L));
-}
+	@Test
+	void testGetPatient_NotFound() {
+		when(repo.findById(1L)).thenReturn(Optional.empty());
+		assertThrows(RuntimeException.class, () -> service.getPatientById(1L));
+	}
 
-@Test
-void testUpdatePatient() {
-    Patient existing = createPatient(1L);
-    Patient updated = createPatient(1L);
-    updated.setLastName("Smith");
+	@Test
+	void testUpdatePatient() {
+		Patient existing = createPatient(1L);
+		Patient updated = createPatient(1L);
+		updated.setLastName("Smith");
 
-    when(repo.findById(1L)).thenReturn(Optional.of(existing));
-    when(repo.save(any())).thenReturn(updated);
+		when(repo.findById(1L)).thenReturn(Optional.of(existing));
+		when(repo.save(any())).thenReturn(updated);
 
-    Patient result = service.updatePatient(1L, updated);
-    assertEquals("Smith", result.getLastName());
-}
+		Patient result = service.updatePatient(1L, updated);
+		assertEquals("Smith", result.getLastName());
+	}
 
 }
