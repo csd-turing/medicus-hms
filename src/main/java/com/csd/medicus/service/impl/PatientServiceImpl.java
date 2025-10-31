@@ -6,6 +6,7 @@ import com.csd.medicus.service.PatientService;
 import com.csd.medicus.dto.PatientDto;
 import com.csd.medicus.mapper.PatientMapper;
 import com.csd.medicus.util.PhoneNormalizer;
+import com.csd.medicus.util.EmailNormalizer;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -19,9 +20,11 @@ import java.util.List;
 /**
  * Service implementation for patient operations.
  *
- * This class now integrates phone normalization: before saving/updating, phone numbers
- * are normalized to E.164 using PhoneNormalizer. Validation errors from normalization
- * are propagated as IllegalArgumentException.
+ * This class integrates phone normalization and email normalization:
+ * - Phone values are normalized to E.164 before saving/updating.
+ * - Email values are trimmed/lowercased and validated before saving/updating.
+ *
+ * Validation errors from normalizers propagate as IllegalArgumentException.
  */
 @Service
 @Transactional
@@ -49,8 +52,14 @@ public class PatientServiceImpl implements PatientService {
 
         // Normalize phone if present (preserve null / empty -> null)
         if (p.getPhone() != null) {
-            String normalized = PhoneNormalizer.normalize(p.getPhone());
-            p.setPhone(normalized);
+            String normalizedPhone = PhoneNormalizer.normalize(p.getPhone());
+            p.setPhone(normalizedPhone);
+        }
+
+        // Normalize and validate email if present (normalize returns null for empty)
+        if (p.getEmail() != null) {
+            String normalizedEmail = EmailNormalizer.normalize(p.getEmail());
+            p.setEmail(normalizedEmail);
         }
 
         return repo.save(p);
@@ -76,7 +85,10 @@ public class PatientServiceImpl implements PatientService {
         if (p.getLastName() != null && p.getLastName().trim().length() >= 1) {
             existing.setLastName(p.getLastName().trim());
         }
-        if (p.getEmail() != null) existing.setEmail(p.getEmail().trim());
+        if (p.getEmail() != null) {
+            String normalizedEmail = EmailNormalizer.normalize(p.getEmail());
+            existing.setEmail(normalizedEmail);
+        }
         if (p.getPhone() != null) {
             // normalize before updating
             String normalized = PhoneNormalizer.normalize(p.getPhone());
