@@ -9,21 +9,20 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface PatientRepository extends JpaRepository<Patient, Long> {
-	@Query("SELECT p FROM Patient p WHERE LOWER(p.firstName) LIKE LOWER(CONCAT('%', :query, '%')) OR LOWER(p.phone) LIKE LOWER(CONCAT('%', :query, '%'))")
+	@Query("SELECT p FROM Patient p WHERE p.isDeleted = false AND (LOWER(p.firstName) LIKE LOWER(CONCAT('%', :query, '%')) OR LOWER(p.phone) LIKE LOWER(CONCAT('%', :query, '%')))")
 	Page<Patient> searchPatients(@Param("query") String query, Pageable pageable);
-	
-	 /**
-     * Existence checks to support duplicate detection.
-     * We provide both single-field existence checks and a combined check for convenience.
-     */
 
-    boolean existsByEmail(String email);
+	// Existence checks used by earlier duplicate-detection feature (they should
+	// consider only non-deleted)
+	boolean existsByEmailAndIsDeletedFalse(String email);
 
-    boolean existsByPhone(String phone);
+	boolean existsByPhoneAndIsDeletedFalse(String phone);
 
-    /**
-     * Convenience method that returns true if either email or phone matches an existing patient.
-     * Implemented at the repository level by Spring Data JPA query derivation.
-     */
-    boolean existsByEmailOrPhone(String email, String phone);
+	boolean existsByEmailOrPhoneAndIsDeletedFalse(String email, String phone);
+
+	// Override findById semantics are not possible via method signature; callers
+	// must respect soft-delete.
+	// Provide a helper finder that excludes deleted rows:
+	@Query("SELECT p FROM Patient p WHERE p.id = :id AND p.isDeleted = false")
+	java.util.Optional<Patient> findByIdAndNotDeleted(@Param("id") Long id);
 }

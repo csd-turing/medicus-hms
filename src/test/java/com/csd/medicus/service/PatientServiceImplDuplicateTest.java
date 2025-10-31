@@ -51,7 +51,7 @@ class PatientServiceImplDuplicateTest {
         // normalize will lowercase the email via EmailNormalizer called by service
         String normalizedEmail = "alice@example.com";
 
-        when(repo.existsByEmail(normalizedEmail)).thenReturn(true);
+        when(repo.existsByEmailAndIsDeletedFalse(normalizedEmail)).thenReturn(true);
 
         // repo.save should not be called
         assertThrows(DuplicateEntityException.class, () -> service.savePatient(input));
@@ -65,7 +65,7 @@ class PatientServiceImplDuplicateTest {
         // For the purpose of the test we stub existsByPhone to return true for the normalized value.
         String normalizedPhone = "+919123456789";
 
-        when(repo.existsByPhone(normalizedPhone)).thenReturn(true);
+        when(repo.existsByPhoneAndIsDeletedFalse(normalizedPhone)).thenReturn(true);
 
         assertThrows(DuplicateEntityException.class, () -> service.savePatient(input));
         verify(repo, never()).save(any());
@@ -77,9 +77,9 @@ class PatientServiceImplDuplicateTest {
         String normalizedEmail = "alice@example.com";
         String normalizedPhone = "+919123456789";
 
-        when(repo.existsByEmail(normalizedEmail)).thenReturn(false);
-        when(repo.existsByPhone(normalizedPhone)).thenReturn(false);
-        when(repo.existsByEmailOrPhone(normalizedEmail, normalizedPhone)).thenReturn(false);
+        when(repo.existsByEmailAndIsDeletedFalse(normalizedEmail)).thenReturn(false);
+        when(repo.existsByPhoneAndIsDeletedFalse(normalizedPhone)).thenReturn(false);
+        when(repo.existsByEmailOrPhoneAndIsDeletedFalse(normalizedEmail, normalizedPhone)).thenReturn(false);
 
         Patient saved = basePatient();
         saved.setId(100L);
@@ -103,11 +103,11 @@ class PatientServiceImplDuplicateTest {
         String normalizedPhone = "+919123456789";
 
         // individual checks claim no conflict
-        when(repo.existsByEmail(normalizedEmail)).thenReturn(false);
-        when(repo.existsByPhone(normalizedPhone)).thenReturn(false);
+        when(repo.existsByEmailAndIsDeletedFalse(normalizedEmail)).thenReturn(false);
+        when(repo.existsByPhoneAndIsDeletedFalse(normalizedPhone)).thenReturn(false);
 
         // but combined check reports a conflict (edge case)
-        when(repo.existsByEmailOrPhone(normalizedEmail, normalizedPhone)).thenReturn(true);
+        when(repo.existsByEmailOrPhoneAndIsDeletedFalse(normalizedEmail, normalizedPhone)).thenReturn(true);
 
         assertThrows(DuplicateEntityException.class, () -> service.savePatient(input));
         verify(repo, never()).save(any());
@@ -122,8 +122,8 @@ class PatientServiceImplDuplicateTest {
         String normalizedPhone = "+919123456789";
 
         // repo.existsByEmail should not be called with null in typical Spring JPA, but we can stub defensively:
-        when(repo.existsByPhone(normalizedPhone)).thenReturn(false);
-        when(repo.existsByEmailOrPhone(normalizedEmail, normalizedPhone)).thenReturn(true);
+        when(repo.existsByPhoneAndIsDeletedFalse(normalizedPhone)).thenReturn(false);
+        when(repo.existsByEmailOrPhoneAndIsDeletedFalse(normalizedEmail, normalizedPhone)).thenReturn(true);
 
         assertThrows(DuplicateEntityException.class, () -> service.savePatient(input));
         verify(repo, never()).save(any());

@@ -123,4 +123,31 @@ class PatientRepositoryTest {
 	    assertThat(results.getTotalElements()).isGreaterThanOrEqualTo(2L);
 	    assertThat(results.getContent()).isNotEmpty();
 	}
+	
+	@Test
+	void testSearchByFirstNamePartial_paginated_excludesDeleted() {
+	    Patient p1 = new Patient();
+	    p1.setFirstName("Ram Kumar");
+	    p1.setPhone("9876543210");
+	    p1.setEmail("ram@example.com");
+	    p1.setCreatedAt(LocalDateTime.now());
+	    p1.setDeleted(false);
+	    repo.saveAndFlush(p1);
+
+	    Patient deleted = new Patient();
+	    deleted.setFirstName("Ram Deleted");
+	    deleted.setPhone("0000000000");
+	    deleted.setEmail("ramdel@example.com");
+	    deleted.setCreatedAt(LocalDateTime.now());
+	    deleted.setDeleted(true);
+	    repo.saveAndFlush(deleted);
+
+	    PageRequest pr = PageRequest.of(0, 10);
+	    Page<Patient> results = repo.searchPatients("ram", pr);
+
+	    assertThat(results).isNotNull();
+	    assertThat(results.getContent()).hasSize(1);
+	    assertThat(results.getContent().get(0).getPhone()).isEqualTo("9876543210");
+	    assertThat(results.getTotalElements()).isEqualTo(1L);
+	}
 }
